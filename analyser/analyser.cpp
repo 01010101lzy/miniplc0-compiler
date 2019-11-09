@@ -12,13 +12,31 @@ Analyser::Analyse() {
     return std::make_pair(_instructions, std::optional<CompilationError>());
 }
 
+inline bool Analyser::expectToken(const TokenType& t) {
+  auto x = nextToken();
+  return (x.has_value() && x.value().GetType() == t);
+}
+inline bool Analyser::peekExpectToken(const TokenType& t) {
+  auto x = nextToken();
+  unreadToken();
+  return (x.has_value() && x.value().GetType() == t);
+}
+inline bool Analyser::tryExpectToken(const TokenType& t) {
+  auto x = nextToken();
+  if (x.has_value() && x.value().GetType() == t) {
+    return true;
+  } else {
+    unreadToken();
+    return false;
+  }
+}
+
 // <程序> ::= 'begin'<主过程>'end'
 std::optional<CompilationError> Analyser::analyseProgram() {
   // 示例函数，示例如何调用子程序
 
   // 'begin'
-  auto bg = nextToken();
-  if (!bg.has_value() || bg.value().GetType() != TokenType::BEGIN)
+  if (!expectToken(TokenType::BEGIN))
     return std::make_optional<CompilationError>(_current_pos,
                                                 ErrorCode::ErrNoBegin);
 
@@ -28,8 +46,7 @@ std::optional<CompilationError> Analyser::analyseProgram() {
     return err;
 
   // 'end'
-  auto ed = nextToken();
-  if (!ed.has_value() || ed.value().GetType() != TokenType::END)
+  if (!expectToken(TokenType::END))
     return std::make_optional<CompilationError>(_current_pos,
                                                 ErrorCode::ErrNoEnd);
   return {};
@@ -41,10 +58,20 @@ std::optional<CompilationError> Analyser::analyseMain() {
   // 完全可以参照 <程序> 编写
 
   // <常量声明>
+  auto err = analyseConstantDeclaration();
+  if (err.has_value())
+    return err;
 
   // <变量声明>
+  err = analyseVariableDeclaration();
+  if (err.has_value())
+    return err;
 
   // <语句序列>
+  err = analyseStatementSequence();
+  if (err.has_value())
+    return err;
+
   return {};
 }
 
@@ -56,28 +83,24 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
   // 常量声明语句可能有 0 或无数个
   while (true) {
     // 预读一个 token，不然不知道是否应该用 <常量声明> 推导
-    auto next = nextToken();
-    if (!next.has_value())
-      return {};
     // 如果是 const 那么说明应该推导 <常量声明> 否则直接返回
-    if (next.value().GetType() != TokenType::CONST) {
-      unreadToken();
+    if (tryExpectToken(TokenType::CONST)) {
       return {};
     }
 
     // <常量声明语句>
-    next = nextToken();
-    if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
+    if (!peekExpectToken(TokenType::IDENTIFIER))
       return std::make_optional<CompilationError>(_current_pos,
                                                   ErrorCode::ErrNeedIdentifier);
+
+    auto next = nextToken();
     if (isDeclared(next.value().GetValueString()))
       return std::make_optional<CompilationError>(
           _current_pos, ErrorCode::ErrDuplicateDeclaration);
     addConstant(next.value());
 
     // '='
-    next = nextToken();
-    if (!next.has_value() || next.value().GetType() != TokenType::EQUAL_SIGN)
+    if (!expectToken(TokenType::EQUAL_SIGN))
       return std::make_optional<CompilationError>(
           _current_pos, ErrorCode::ErrConstantNeedValue);
 
@@ -88,8 +111,7 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
       return err;
 
     // ';'
-    next = nextToken();
-    if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+    if (!expectToken(TokenType::SEMICOLON))
       return std::make_optional<CompilationError>(_current_pos,
                                                   ErrorCode::ErrNoSemicolon);
     // 生成一次 LIT 指令加载常量
@@ -103,20 +125,29 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
 // 需要补全
 std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
   // 变量声明语句可能有一个或者多个
+  while (1) {
+    if (!tryExpectToken(TokenType::VAR))
+      return {};
 
-  // 预读？
+    // <常量声明语句>
+    if (!peekExpectToken(TokenType::IDENTIFIER))
+      return std::make_optional<CompilationError>(_current_pos,
+                                                  ErrorCode::ErrNeedIdentifier);
 
-  // 'var'
+    auto next = nextToken();
+    if (isDeclared(next.value().GetValueString()))
+      return {
+          CompilationError(_current_pos, ErrorCode::ErrDuplicateDeclaration)};
 
-  // <标识符>
+    if (tryExpectToken(TokenType::EQUAL_SIGN)) {
+      // '<表达式>'
 
-  // 变量可能没有初始化，仍然需要一次预读
+      int32_t val;
+      auto err = analyseConstantExpression(val);
+    }
 
-  // '='
-
-  // '<表达式>'
-
-  // ';'
+    // ';'
+  }
   return {};
 }
 
@@ -140,10 +171,10 @@ std::optional<CompilationError> Analyser::analyseStatementSequence() {
     }
     std::optional<CompilationError> err;
     switch (next.value().GetType()) {
-      // 这里需要你针对不同的预读结果来调用不同的子程序
-      // 注意我们没有针对空语句单独声明一个函数，因此可以直接在这里返回
-    default:
-      break;
+        // 这里需要你针对不同的预读结果来调用不同的子程序
+        // 注意我们没有针对空语句单独声明一个函数，因此可以直接在这里返回
+      default:
+        break;
     }
   }
   return {};
@@ -151,8 +182,8 @@ std::optional<CompilationError> Analyser::analyseStatementSequence() {
 
 // <常表达式> ::= [<符号>]<无符号整数>
 // 需要补全
-std::optional<CompilationError>
-Analyser::analyseConstantExpression(int32_t &out) {
+std::optional<CompilationError> Analyser::analyseConstantExpression(
+    int32_t& out) {
   // out 是常表达式的结果
   // 这里你要分析常表达式并且计算结果
   // 注意以下均为常表达式
@@ -267,11 +298,11 @@ std::optional<CompilationError> Analyser::analyseFactor() {
     return std::make_optional<CompilationError>(
         _current_pos, ErrorCode::ErrIncompleteExpression);
   switch (next.value().GetType()) {
-    // 这里和 <语句序列> 类似，需要根据预读结果调用不同的子程序
-    // 但是要注意 default 返回的是一个编译错误
-  default:
-    return std::make_optional<CompilationError>(
-        _current_pos, ErrorCode::ErrIncompleteExpression);
+      // 这里和 <语句序列> 类似，需要根据预读结果调用不同的子程序
+      // 但是要注意 default 返回的是一个编译错误
+    default:
+      return std::make_optional<CompilationError>(
+          _current_pos, ErrorCode::ErrIncompleteExpression);
   }
 
   // 取负
@@ -296,22 +327,26 @@ void Analyser::unreadToken() {
   _offset--;
 }
 
-void Analyser::_add(const Token &tk, std::map<std::string, int32_t> &mp) {
+void Analyser::_add(const Token& tk, std::map<std::string, int32_t>& mp) {
   if (tk.GetType() != TokenType::IDENTIFIER)
     DieAndPrint("only identifier can be added to the table.");
   mp[tk.GetValueString()] = _nextTokenIndex;
   _nextTokenIndex++;
 }
 
-void Analyser::addVariable(const Token &tk) { _add(tk, _vars); }
+void Analyser::addVariable(const Token& tk) {
+  _add(tk, _vars);
+}
 
-void Analyser::addConstant(const Token &tk) { _add(tk, _consts); }
+void Analyser::addConstant(const Token& tk) {
+  _add(tk, _consts);
+}
 
-void Analyser::addUninitializedVariable(const Token &tk) {
+void Analyser::addUninitializedVariable(const Token& tk) {
   _add(tk, _uninitialized_vars);
 }
 
-int32_t Analyser::getIndex(const std::string &s) {
+int32_t Analyser::getIndex(const std::string& s) {
   if (_uninitialized_vars.find(s) != _uninitialized_vars.end())
     return _uninitialized_vars[s];
   else if (_vars.find(s) != _vars.end())
@@ -320,19 +355,19 @@ int32_t Analyser::getIndex(const std::string &s) {
     return _consts[s];
 }
 
-bool Analyser::isDeclared(const std::string &s) {
+bool Analyser::isDeclared(const std::string& s) {
   return isConstant(s) || isUninitializedVariable(s) ||
          isInitializedVariable(s);
 }
 
-bool Analyser::isUninitializedVariable(const std::string &s) {
+bool Analyser::isUninitializedVariable(const std::string& s) {
   return _uninitialized_vars.find(s) != _uninitialized_vars.end();
 }
-bool Analyser::isInitializedVariable(const std::string &s) {
+bool Analyser::isInitializedVariable(const std::string& s) {
   return _vars.find(s) != _vars.end();
 }
 
-bool Analyser::isConstant(const std::string &s) {
+bool Analyser::isConstant(const std::string& s) {
   return _consts.find(s) != _consts.end();
 }
-} // namespace miniplc0
+}  // namespace miniplc0
