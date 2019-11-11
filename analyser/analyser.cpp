@@ -202,25 +202,23 @@ std::optional<CompilationError> Analyser::analyseExpression() {
   // {<加法型运算符><项>}
   while (true) {
     // 预读
-    auto next = nextToken();
-    if (!next.has_value())
-      return {};
-    auto type = next.value().GetType();
-    if (type != TokenType::PLUS_SIGN && type != TokenType::MINUS_SIGN) {
-      unreadToken();
+    if (tryExpectToken(TokenType::PLUS_SIGN)) {
+      err = analyseItem();
+      if (err.has_value())
+        return err;
+
+      _instructions.emplace_back(Operation::ADD, 0);
+
+    } else if (tryExpectToken(TokenType::MINUS_SIGN)) {
+      err = analyseItem();
+      if (err.has_value())
+        return err;
+
+      _instructions.emplace_back(Operation::SUB, 0);
+
+    } else {
       return {};
     }
-
-    // <项>
-    err = analyseItem();
-    if (err.has_value())
-      return err;
-
-    // 根据结果生成指令
-    if (type == TokenType::PLUS_SIGN)
-      _instructions.emplace_back(Operation::ADD, 0);
-    else if (type == TokenType::MINUS_SIGN)
-      _instructions.emplace_back(Operation::SUB, 0);
   }
   return {};
 }
