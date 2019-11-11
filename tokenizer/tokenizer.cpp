@@ -64,7 +64,7 @@ Tokenizer::nextToken() {
   auto cur = current_char.value();
   if (miniplc0::isspace(cur)) {
     // skip_spaces
-    while (current_char.has_value && miniplc0::isspace(current_char.value))
+    while (current_char.has_value() && miniplc0::isspace(current_char.value()))
       current_char = nextChar();
     unreadLast();
 
@@ -77,9 +77,9 @@ Tokenizer::nextToken() {
 
     // while isalnum(cur)
     while (current_char.has_value() &&
-           (miniplc0::isalpha(current_char.value) ||
-            miniplc0::isdigit(current_char.value))) {
-      ss << current_char.value;
+           (miniplc0::isalpha(current_char.value()) ||
+            miniplc0::isdigit(current_char.value()))) {
+      ss << current_char.value();
       current_char = nextChar();
     }
 
@@ -110,8 +110,8 @@ Tokenizer::nextToken() {
     // lex_uint
     pos = currentPos();
 
-    while (current_char.has_value() && miniplc0::isdigit(current_char.value)) {
-      ss << current_char.value;
+    while (current_char.has_value() && miniplc0::isdigit(current_char.value())) {
+      ss << current_char.value();
       current_char = nextChar();
     }
 
