@@ -1,2 +1,4 @@
 {
+  "clang.cxxflags": ["-std=c++17"],
+  "clang-format.fallbackStyle": "Chromium"
 }
