@@ -2,6 +2,7 @@
 
 #include <climits>
 
+
 namespace miniplc0 {
 std::pair<std::vector<Instruction>, std::optional<CompilationError>>
 Analyser::Analyse() {
@@ -84,7 +85,7 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
   while (true) {
     // 预读一个 token，不然不知道是否应该用 <常量声明> 推导
     // 如果是 const 那么说明应该推导 <常量声明> 否则直接返回
-    if (tryExpectToken(TokenType::CONST)) {
+    if (!tryExpectToken(TokenType::CONST)) {
       return {};
     }
 
@@ -116,6 +117,8 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
                                                   ErrorCode::ErrNoSemicolon);
     // 生成一次 LIT 指令加载常量
     _instructions.emplace_back(Operation::LIT, val);
+    _instructions.emplace_back(Operation::STO,
+                               getIndex(next.value().GetValueString()));
   }
   return {};
 }
@@ -260,6 +263,9 @@ std::optional<CompilationError> Analyser::analyseAssignmentStatement() {
   if (isConstant(ident))
     return {CompilationError(_current_pos, ErrorCode::ErrAssignToConstant)};
 
+  if (!expectToken(TokenType::EQUAL_SIGN))
+    return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
+
   auto err = analyseExpression();
   if (err.has_value())
     return err;
@@ -311,7 +317,32 @@ std::optional<CompilationError> Analyser::analyseOutputStatement() {
 // <项> :: = <因子>{ <乘法型运算符><因子> }
 // 需要补全
 std::optional<CompilationError> Analyser::analyseItem() {
-  // 可以参考 <表达式> 实现
+  // <项>
+  auto err = analyseFactor();
+  if (err.has_value())
+    return err;
+
+  // {<加法型运算符><项>}
+  while (true) {
+    // 预读
+    bool mult;
+    if (tryExpectToken(TokenType::MULTIPLICATION_SIGN)) {
+      mult = true;
+    } else if (tryExpectToken(TokenType::DIVISION_SIGN)) {
+      mult = false;
+    } else {
+      return {};
+    }
+
+    err = analyseFactor();
+    if (err.has_value())
+      return err;
+
+    if (mult)
+      _instructions.emplace_back(Operation::MUL, 0);
+    else
+      _instructions.emplace_back(Operation::DIV, 0);
+  }
   return {};
 }
 
@@ -336,7 +367,7 @@ std::optional<CompilationError> Analyser::analyseFactor() {
     // identifier
     auto next = nextToken().value();
     auto ident = next.GetValueString();
-    if (!isInitializedVariable(ident))
+    if (!isInitializedVariable(ident) && !isConstant(ident))
       return {CompilationError(_current_pos, ErrorCode::ErrNotInitialized)};
     if (!isDeclared(ident))
       return {CompilationError(_current_pos, ErrorCode::ErrNotDeclared)};
@@ -357,19 +388,6 @@ std::optional<CompilationError> Analyser::analyseFactor() {
   } else {
     return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
   }
-
-  // // 预读
-  // next = nextToken();
-  // if (!next.has_value())
-  //   return std::make_optional<CompilationError>(
-  //       _current_pos, ErrorCode::ErrIncompleteExpression);
-  // switch (next.value().GetType()) {
-  //     // 这里和 <语句序列> 类似，需要根据预读结果调用不同的子程序
-  //     // 但是要注意 default 返回的是一个编译错误
-  //   default:
-  //     return std::make_optional<CompilationError>(
-  //         _current_pos, ErrorCode::ErrIncompleteExpression);
-  // }
 
   // 取负
   if (prefix == -1)

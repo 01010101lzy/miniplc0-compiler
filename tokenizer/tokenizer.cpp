@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 
+
 namespace miniplc0 {
 
 std::pair<std::optional<Token>, std::optional<CompilationError>>
@@ -66,12 +67,16 @@ Tokenizer::nextToken() {
     // skip_spaces
     while (current_char.has_value() && miniplc0::isspace(current_char.value()))
       current_char = nextChar();
-    unreadLast();
 
-    // We are sure the next char is not space, so we can call this function
-    // again. This is not infinitely recursive!
-    return nextToken();
-  } else if (miniplc0::isalpha(cur)) {
+    // 已经读到了文件尾
+    if (!current_char.has_value())
+      // 返回一个空的token，和编译错误ErrEOF：遇到了文件尾
+      return {std::optional<Token>(),
+              std::make_optional<CompilationError>(0, 0, ErrEOF)};
+  }
+
+  cur = current_char.value();
+  if (miniplc0::isalpha(cur)) {
     // lex_ident
     pos = currentPos();
 
@@ -136,6 +141,7 @@ Tokenizer::nextToken() {
     }
 
   } else {
+    pos = currentPos();
     // other chars
     switch (cur) {
       case '+':
