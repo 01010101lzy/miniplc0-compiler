@@ -134,19 +134,30 @@ std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
       return std::make_optional<CompilationError>(_current_pos,
                                                   ErrorCode::ErrNeedIdentifier);
 
-    auto next = nextToken();
-    if (isDeclared(next.value().GetValueString()))
+    auto next = nextToken().value();
+    if (isDeclared(next.GetValueString()))
       return {
           CompilationError(_current_pos, ErrorCode::ErrDuplicateDeclaration)};
+
+    addUninitializedVariable(next);
 
     if (tryExpectToken(TokenType::EQUAL_SIGN)) {
       // '<表达式>'
 
-      int32_t val;
-      auto err = analyseConstantExpression(val);
+      // int32_t val;
+      auto err = analyseExpression();
+      if (err.has_value())
+        return err;
+
+      addVariable(next);
+      _instructions.emplace_back(Operation::STO,
+                                 getIndex(next.GetValueString()));
     }
 
     // ';'
+    if (!expectToken(TokenType::SEMICOLON)) {
+      return {CompilationError(_current_pos, ErrorCode::ErrNoSemicolon)};
+    }
   }
   return {};
 }
@@ -159,25 +170,21 @@ std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
 // 需要补全
 std::optional<CompilationError> Analyser::analyseStatementSequence() {
   while (true) {
-    // 预读
-    auto next = nextToken();
-    if (!next.has_value())
+    if (tryExpectToken(TokenType::SEMICOLON)) {
+      // noop
+    } else if (peekExpectToken(TokenType::IDENTIFIER)) {
+      // Assignment
+      auto e = analyseAssignmentStatement();
+      if (e.has_value())
+        return e;
+    } else if (peekExpectToken(TokenType::PRINT)) {
+      auto e = analyseOutputStatement();
+      if (e.has_value())
+        return e;
+    } else {
       return {};
-    unreadToken();
-    if (next.value().GetType() != TokenType::IDENTIFIER &&
-        next.value().GetType() != TokenType::PRINT &&
-        next.value().GetType() != TokenType::SEMICOLON) {
-      return {};
-    }
-    std::optional<CompilationError> err;
-    switch (next.value().GetType()) {
-        // 这里需要你针对不同的预读结果来调用不同的子程序
-        // 注意我们没有针对空语句单独声明一个函数，因此可以直接在这里返回
-      default:
-        break;
     }
   }
-  return {};
 }
 
 // <常表达式> ::= [<符号>]<无符号整数>
@@ -189,6 +196,24 @@ std::optional<CompilationError> Analyser::analyseConstantExpression(
   // 注意以下均为常表达式
   // +1 -1 1
   // 同时要注意是否溢出
+  bool neg = false;
+  if (tryExpectToken(TokenType::PLUS_SIGN))
+    neg = false;
+  else if (tryExpectToken(TokenType::MINUS_SIGN))
+    neg = true;
+  if (!peekExpectToken(TokenType::UNSIGNED_INTEGER))
+    return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
+  auto n = nextToken();
+  // we are sure that this value does not overflow in tokenizer
+  int32_t k;
+  try {
+    k = std::any_cast<int32_t>(n.value().GetValue());
+  } catch (std::bad_any_cast&) {
+    return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
+  }
+  if (neg)
+    k = -k;
+  out = k;
   return {};
 }
 
@@ -202,23 +227,23 @@ std::optional<CompilationError> Analyser::analyseExpression() {
   // {<加法型运算符><项>}
   while (true) {
     // 预读
+    bool plus;
     if (tryExpectToken(TokenType::PLUS_SIGN)) {
-      err = analyseItem();
-      if (err.has_value())
-        return err;
-
-      _instructions.emplace_back(Operation::ADD, 0);
-
+      plus = true;
     } else if (tryExpectToken(TokenType::MINUS_SIGN)) {
-      err = analyseItem();
-      if (err.has_value())
-        return err;
-
-      _instructions.emplace_back(Operation::SUB, 0);
-
+      plus = false;
     } else {
       return {};
     }
+
+    err = analyseItem();
+    if (err.has_value())
+      return err;
+
+    if (plus)
+      _instructions.emplace_back(Operation::ADD, 0);
+    else
+      _instructions.emplace_back(Operation::SUB, 0);
   }
   return {};
 }
@@ -226,6 +251,23 @@ std::optional<CompilationError> Analyser::analyseExpression() {
 // <赋值语句> ::= <标识符>'='<表达式>';'
 // 需要补全
 std::optional<CompilationError> Analyser::analyseAssignmentStatement() {
+  auto next = nextToken();
+
+  // assert next.has_value()
+  auto ident = next.value().GetValueString();
+  if (!isDeclared(ident))
+    return {CompilationError(_current_pos, ErrorCode::ErrNotDeclared)};
+  if (isConstant(ident))
+    return {CompilationError(_current_pos, ErrorCode::ErrAssignToConstant)};
+
+  auto err = analyseExpression();
+  if (err.has_value())
+    return err;
+
+  if (!isInitializedVariable(ident))
+    addVariable(next.value());
+
+  _instructions.emplace_back(Operation::STO, getIndex(ident));
   // 这里除了语法分析以外还要留意
   // 标识符声明过吗？
   // 标识符是常量吗？
@@ -290,18 +332,44 @@ std::optional<CompilationError> Analyser::analyseFactor() {
   } else
     unreadToken();
 
-  // 预读
-  next = nextToken();
-  if (!next.has_value())
-    return std::make_optional<CompilationError>(
-        _current_pos, ErrorCode::ErrIncompleteExpression);
-  switch (next.value().GetType()) {
-      // 这里和 <语句序列> 类似，需要根据预读结果调用不同的子程序
-      // 但是要注意 default 返回的是一个编译错误
-    default:
-      return std::make_optional<CompilationError>(
-          _current_pos, ErrorCode::ErrIncompleteExpression);
+  if (peekExpectToken(TokenType::IDENTIFIER)) {
+    // identifier
+    auto next = nextToken().value();
+    auto ident = next.GetValueString();
+    if (!isInitializedVariable(ident))
+      return {CompilationError(_current_pos, ErrorCode::ErrNotInitialized)};
+    if (!isDeclared(ident))
+      return {CompilationError(_current_pos, ErrorCode::ErrNotDeclared)};
+
+    _instructions.emplace_back(Operation::LOD, getIndex(ident));
+
+  } else if (peekExpectToken(TokenType::UNSIGNED_INTEGER)) {
+    auto next = nextToken().value();
+    // we are sure this will not overflow
+    int32_t val = std::any_cast<int32_t>(next.GetValue());
+    _instructions.emplace_back(Operation::LIT, val);
+
+  } else if (tryExpectToken(TokenType::LEFT_BRACKET)) {
+    analyseExpression();
+    if (!expectToken(TokenType::RIGHT_BRACKET))
+      return {
+          CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
+  } else {
+    return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
   }
+
+  // // 预读
+  // next = nextToken();
+  // if (!next.has_value())
+  //   return std::make_optional<CompilationError>(
+  //       _current_pos, ErrorCode::ErrIncompleteExpression);
+  // switch (next.value().GetType()) {
+  //     // 这里和 <语句序列> 类似，需要根据预读结果调用不同的子程序
+  //     // 但是要注意 default 返回的是一个编译错误
+  //   default:
+  //     return std::make_optional<CompilationError>(
+  //         _current_pos, ErrorCode::ErrIncompleteExpression);
+  // }
 
   // 取负
   if (prefix == -1)

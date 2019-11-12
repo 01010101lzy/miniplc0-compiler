@@ -110,7 +110,8 @@ Tokenizer::nextToken() {
     // lex_uint
     pos = currentPos();
 
-    while (current_char.has_value() && miniplc0::isdigit(current_char.value())) {
+    while (current_char.has_value() &&
+           miniplc0::isdigit(current_char.value())) {
       ss << current_char.value();
       current_char = nextChar();
     }
@@ -119,10 +120,11 @@ Tokenizer::nextToken() {
 
     auto s = ss.str();
 
-    auto ui = std::stoll(s);
+    errno = 0;
+    int32_t val = std::stoi(s);
     if (errno == 0) {
-      return {std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, ss.str(),
-                                        pos, nextPos()),
+      return {std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, val, pos,
+                                        nextPos()),
               std::optional<CompilationError>()};
     } else if (errno == ERANGE) {
       return {std::optional<Token>(), std::make_optional<CompilationError>(
