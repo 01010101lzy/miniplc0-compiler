@@ -4,13 +4,11 @@
 #include <sstream>
 #include <string>
 
-
 namespace miniplc0 {
 
 std::pair<std::optional<Token>, std::optional<CompilationError>>
 Tokenizer::NextToken() {
-  if (!_initialized)
-    readAll();
+  if (!_initialized) readAll();
   if (_rdr.bad())
     return std::make_pair(
         std::optional<Token>(),
@@ -20,11 +18,9 @@ Tokenizer::NextToken() {
         std::optional<Token>(),
         std::make_optional<CompilationError>(0, 0, ErrorCode::ErrEOF));
   auto p = nextToken();
-  if (p.second.has_value())
-    return std::make_pair(p.first, p.second);
+  if (p.second.has_value()) return std::make_pair(p.first, p.second);
   auto err = checkToken(p.first.value());
-  if (err.has_value())
-    return std::make_pair(p.first, err.value());
+  if (err.has_value()) return std::make_pair(p.first, err.value());
   return std::make_pair(p.first, std::optional<CompilationError>());
 }
 
@@ -78,7 +74,7 @@ Tokenizer::nextToken() {
   cur = current_char.value();
   if (miniplc0::isalpha(cur)) {
     // lex_ident
-    pos = currentPos();
+    pos = previousPos();
 
     // while isalnum(cur)
     while (current_char.has_value() &&
@@ -108,12 +104,12 @@ Tokenizer::nextToken() {
       typ = TokenType::IDENTIFIER;
     }
 
-    return {std::make_optional<Token>(typ, s, pos, nextPos()),
+    return {std::make_optional<Token>(typ, s, pos, currentPos()),
             std::optional<CompilationError>()};
 
   } else if (miniplc0::isdigit(cur)) {
     // lex_uint
-    pos = currentPos();
+    pos = previousPos();
 
     while (current_char.has_value() &&
            miniplc0::isdigit(current_char.value())) {
@@ -125,56 +121,55 @@ Tokenizer::nextToken() {
 
     auto s = ss.str();
 
-    errno = 0;
-    int32_t val = std::stoi(s);
-    if (errno == 0) {
+    try {
+      int32_t val = std::stoi(s);
       return {std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, val, pos,
-                                        nextPos()),
+                                        currentPos()),
               std::optional<CompilationError>()};
-    } else if (errno == ERANGE) {
+    } catch (std::out_of_range& _) {
       return {std::optional<Token>(), std::make_optional<CompilationError>(
                                           pos, ErrorCode::ErrIntegerOverflow)};
-    } else {
-      // Unknown error
+    } catch (std::invalid_argument& _) {
       return {std::optional<Token>(), std::make_optional<CompilationError>(
                                           pos, ErrorCode::ErrInvalidInput)};
     }
 
   } else {
-    pos = currentPos();
+    pos = previousPos();
+    auto current_pos = currentPos();
     // other chars
     switch (cur) {
       case '+':
         return {std::make_optional<Token>(TokenType::PLUS_SIGN, '+', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       case '-':
         return {std::make_optional<Token>(TokenType::MINUS_SIGN, '-', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       case '*':
         return {std::make_optional<Token>(TokenType::MULTIPLICATION_SIGN, '*',
-                                          pos, nextPos()),
+                                          pos, current_pos),
                 std::optional<CompilationError>()};
       case '/':
         return {std::make_optional<Token>(TokenType::DIVISION_SIGN, '/', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       case '=':
         return {std::make_optional<Token>(TokenType::EQUAL_SIGN, '=', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       case '(':
         return {std::make_optional<Token>(TokenType::LEFT_BRACKET, '(', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       case ')':
         return {std::make_optional<Token>(TokenType::RIGHT_BRACKET, ')', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       case ';':
         return {std::make_optional<Token>(TokenType::SEMICOLON, ';', pos,
-                                          nextPos()),
+                                          current_pos),
                 std::optional<CompilationError>()};
       default:
         return std::make_pair(std::optional<Token>(),
@@ -201,8 +196,7 @@ std::optional<CompilationError> Tokenizer::checkToken(const Token& t) {
 }
 
 void Tokenizer::readAll() {
-  if (_initialized)
-    return;
+  if (_initialized) return;
   for (std::string tp; std::getline(_rdr, tp);)
     _lines_buffer.emplace_back(std::move(tp + "\n"));
   _initialized = true;
@@ -213,17 +207,14 @@ void Tokenizer::readAll() {
 // Note: We allow this function to return a postion which is out of bound
 // according to the design like std::vector::end().
 std::pair<uint64_t, uint64_t> Tokenizer::nextPos() {
-  if (_ptr.first >= _lines_buffer.size())
-    DieAndPrint("advance after EOF");
+  if (_ptr.first >= _lines_buffer.size()) DieAndPrint("advance after EOF");
   if (_ptr.second == _lines_buffer[_ptr.first].size() - 1)
     return std::make_pair(_ptr.first + 1, 0);
   else
     return std::make_pair(_ptr.first, _ptr.second + 1);
 }
 
-std::pair<uint64_t, uint64_t> Tokenizer::currentPos() {
-  return _ptr;
-}
+std::pair<uint64_t, uint64_t> Tokenizer::currentPos() { return _ptr; }
 
 std::pair<uint64_t, uint64_t> Tokenizer::previousPos() {
   if (_ptr.first == 0 && _ptr.second == 0)
@@ -236,19 +227,14 @@ std::pair<uint64_t, uint64_t> Tokenizer::previousPos() {
 }
 
 std::optional<char> Tokenizer::nextChar() {
-  if (isEOF())
-    return {};  // EOF
+  if (isEOF()) return {};  // EOF
   auto result = _lines_buffer[_ptr.first][_ptr.second];
   _ptr = nextPos();
   return result;
 }
 
-bool Tokenizer::isEOF() {
-  return _ptr.first >= _lines_buffer.size();
-}
+bool Tokenizer::isEOF() { return _ptr.first >= _lines_buffer.size(); }
 
 // Note: Is it evil to unread a buffer?
-void Tokenizer::unreadLast() {
-  _ptr = previousPos();
-}
+void Tokenizer::unreadLast() { _ptr = previousPos(); }
 }  // namespace miniplc0
