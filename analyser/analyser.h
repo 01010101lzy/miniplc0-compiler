@@ -92,6 +92,9 @@ class Analyser final {
   bool isUninitializedVariable(const std::string&);
   // 是否是已初始化的变量
   bool isInitializedVariable(const std::string&);
+  // 把一个没有初始化过的变量移到已经初始化过的区域
+  void makeInitialized(const std::string&);
+  void makeInitialized(const miniplc0::Token&);
   // 是否是常量
   bool isConstant(const std::string&);
   // 获得 {变量，常量} 在栈上的偏移

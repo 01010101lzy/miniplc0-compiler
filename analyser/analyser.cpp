@@ -2,7 +2,6 @@
 
 #include <climits>
 
-
 namespace miniplc0 {
 std::pair<std::vector<Instruction>, std::optional<CompilationError>>
 Analyser::Analyse() {
@@ -43,8 +42,7 @@ std::optional<CompilationError> Analyser::analyseProgram() {
 
   // <主过程>
   auto err = analyseMain();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   // 'end'
   if (!expectToken(TokenType::END))
@@ -60,18 +58,15 @@ std::optional<CompilationError> Analyser::analyseMain() {
 
   // <常量声明>
   auto err = analyseConstantDeclaration();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   // <变量声明>
   err = analyseVariableDeclaration();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   // <语句序列>
   err = analyseStatementSequence();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   return {};
 }
@@ -108,8 +103,7 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
     // <常表达式>
     int32_t val;
     auto err = analyseConstantExpression(val);
-    if (err.has_value())
-      return err;
+    if (err.has_value()) return err;
 
     // ';'
     if (!expectToken(TokenType::SEMICOLON))
@@ -129,8 +123,7 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
 std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
   // 变量声明语句可能有一个或者多个
   while (1) {
-    if (!tryExpectToken(TokenType::VAR))
-      return {};
+    if (!tryExpectToken(TokenType::VAR)) return {};
 
     // <常量声明语句>
     if (!peekExpectToken(TokenType::IDENTIFIER))
@@ -142,15 +135,14 @@ std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
       return {
           CompilationError(_current_pos, ErrorCode::ErrDuplicateDeclaration)};
 
-    addUninitializedVariable(next);
-
-    if (tryExpectToken(TokenType::EQUAL_SIGN)) {
+    if (!tryExpectToken(TokenType::EQUAL_SIGN)) {
+      addUninitializedVariable(next);
+    } else {
       // '<表达式>'
 
       // int32_t val;
       auto err = analyseExpression();
-      if (err.has_value())
-        return err;
+      if (err.has_value()) return err;
 
       addVariable(next);
       _instructions.emplace_back(Operation::STO,
@@ -178,12 +170,10 @@ std::optional<CompilationError> Analyser::analyseStatementSequence() {
     } else if (peekExpectToken(TokenType::IDENTIFIER)) {
       // Assignment
       auto e = analyseAssignmentStatement();
-      if (e.has_value())
-        return e;
+      if (e.has_value()) return e;
     } else if (peekExpectToken(TokenType::PRINT)) {
       auto e = analyseOutputStatement();
-      if (e.has_value())
-        return e;
+      if (e.has_value()) return e;
     } else {
       return {};
     }
@@ -214,8 +204,7 @@ std::optional<CompilationError> Analyser::analyseConstantExpression(
   } catch (std::bad_any_cast&) {
     return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
   }
-  if (neg)
-    k = -k;
+  if (neg) k = -k;
   out = k;
   return {};
 }
@@ -224,8 +213,7 @@ std::optional<CompilationError> Analyser::analyseConstantExpression(
 std::optional<CompilationError> Analyser::analyseExpression() {
   // <项>
   auto err = analyseItem();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   // {<加法型运算符><项>}
   while (true) {
@@ -240,8 +228,7 @@ std::optional<CompilationError> Analyser::analyseExpression() {
     }
 
     err = analyseItem();
-    if (err.has_value())
-      return err;
+    if (err.has_value()) return err;
 
     if (plus)
       _instructions.emplace_back(Operation::ADD, 0);
@@ -267,11 +254,9 @@ std::optional<CompilationError> Analyser::analyseAssignmentStatement() {
     return {CompilationError(_current_pos, ErrorCode::ErrIncompleteExpression)};
 
   auto err = analyseExpression();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
-  if (!isInitializedVariable(ident))
-    addVariable(next.value());
+  if (!isInitializedVariable(ident)) makeInitialized(next.value());
 
   _instructions.emplace_back(Operation::STO, getIndex(ident));
   // 这里除了语法分析以外还要留意
@@ -294,8 +279,7 @@ std::optional<CompilationError> Analyser::analyseOutputStatement() {
 
   // <表达式>
   auto err = analyseExpression();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   // ')'
   next = nextToken();
@@ -319,8 +303,7 @@ std::optional<CompilationError> Analyser::analyseOutputStatement() {
 std::optional<CompilationError> Analyser::analyseItem() {
   // <项>
   auto err = analyseFactor();
-  if (err.has_value())
-    return err;
+  if (err.has_value()) return err;
 
   // {<加法型运算符><项>}
   while (true) {
@@ -335,8 +318,7 @@ std::optional<CompilationError> Analyser::analyseItem() {
     }
 
     err = analyseFactor();
-    if (err.has_value())
-      return err;
+    if (err.has_value()) return err;
 
     if (mult)
       _instructions.emplace_back(Operation::MUL, 0);
@@ -390,14 +372,12 @@ std::optional<CompilationError> Analyser::analyseFactor() {
   }
 
   // 取负
-  if (prefix == -1)
-    _instructions.emplace_back(Operation::SUB, 0);
+  if (prefix == -1) _instructions.emplace_back(Operation::SUB, 0);
   return {};
 }
 
 std::optional<Token> Analyser::nextToken() {
-  if (_offset == _tokens.size())
-    return {};
+  if (_offset == _tokens.size()) return {};
   // 考虑到 _tokens[0..._offset-1] 已经被分析过了
   // 所以我们选择 _tokens[0..._offset-1] 的 EndPos 作为当前位置
   _current_pos = _tokens[_offset].GetEndPos();
@@ -405,8 +385,7 @@ std::optional<Token> Analyser::nextToken() {
 }
 
 void Analyser::unreadToken() {
-  if (_offset == 0)
-    DieAndPrint("analyser unreads token from the begining.");
+  if (_offset == 0) DieAndPrint("analyser unreads token from the begining.");
   _current_pos = _tokens[_offset - 1].GetEndPos();
   _offset--;
 }
@@ -418,12 +397,19 @@ void Analyser::_add(const Token& tk, std::map<std::string, int32_t>& mp) {
   _nextTokenIndex++;
 }
 
-void Analyser::addVariable(const Token& tk) {
-  _add(tk, _vars);
-}
+void Analyser::addVariable(const Token& tk) { _add(tk, _vars); }
 
-void Analyser::addConstant(const Token& tk) {
-  _add(tk, _consts);
+void Analyser::addConstant(const Token& tk) { _add(tk, _consts); }
+
+void Analyser::makeInitialized(const Token& var) {
+  makeInitialized(var.GetValueString());
+}
+void Analyser::makeInitialized(const std::string& var_name) {
+  auto var = _uninitialized_vars.find(var_name);
+  if (var == _uninitialized_vars.end())
+    DieAndPrint("Variable not found in uninitialized area. bad bad");
+  auto item = _uninitialized_vars.extract(var);
+  _vars.insert(std::move(item));
 }
 
 void Analyser::addUninitializedVariable(const Token& tk) {

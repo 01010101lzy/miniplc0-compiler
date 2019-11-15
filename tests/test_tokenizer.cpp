@@ -101,7 +101,29 @@ TEST_CASE("Test number overflow") {
   }
 }
 
-TEST_CASE("Test Identifiers") { auto s = "a ab abc123"; }
+TEST_CASE("Test Identifiers") {
+  std::vector<std::pair<std::string, miniplc0::Token>> cases = {
+      {"a", miniplc0::Token(miniplc0::TokenType::IDENTIFIER, std::string("a"),
+                            {0, 0}, {0, 1})},
+      {"abc123", miniplc0::Token(miniplc0::TokenType::IDENTIFIER,
+                                 std::string("abc123"), {0, 0}, {0, 6})},
+      {"123abc", miniplc0::Token(miniplc0::TokenType::UNSIGNED_INTEGER,
+                                 std::string("123"), {0, 0}, {0, 3})},
+      {"ull", miniplc0::Token(miniplc0::TokenType::IDENTIFIER,
+                              std::string("ull"), {0, 0}, {0, 3})},
+  };
+
+  for (auto& c : cases) {
+    SECTION(fmt::format("case token: {}", c.first)) {
+      std::stringstream in(c.first);
+      miniplc0::Tokenizer lexer(in);
+      auto res = lexer.NextToken();
+      REQUIRE_FALSE(res.second.has_value());
+      REQUIRE(res.first.has_value());
+      REQUIRE(res.first.value() == c.second);
+    }
+  }
+}
 
 TEST_CASE("Test Symbols") {
   auto s = "+-*/()=;";
