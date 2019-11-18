@@ -355,10 +355,10 @@ std::optional<CompilationError> Analyser::analyseFactor() {
     // identifier
     auto next = nextToken().value();
     auto ident = next.GetValueString();
-    if (!isInitializedVariable(ident) && !isConstant(ident))
-      return {CompilationError(_current_pos, ErrorCode::ErrNotInitialized)};
     if (!isDeclared(ident))
       return {CompilationError(_current_pos, ErrorCode::ErrNotDeclared)};
+    if (!isInitializedVariable(ident) && !isConstant(ident))
+      return {CompilationError(_current_pos, ErrorCode::ErrNotInitialized)};
 
     _instructions.emplace_back(Operation::LOD, getIndex(ident));
 

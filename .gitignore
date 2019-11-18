@@ -2,10 +2,12 @@
 CMakeSettings.json
 *.plc0
 *.txt
-!CMakeLists.txt
 build
 CMakeFiles
 *.cmake
 **/Makefile
 3rd_party/argparse
 3rd_party/fmt
+
+!CMakeLists.txt
+!CMakeModules/*.cmake

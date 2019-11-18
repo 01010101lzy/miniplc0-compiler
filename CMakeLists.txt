@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.12)
 
 project(miniplc0)
 
+
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
+if(CMAKE_COMPILER_IS_GNUCXX)
+	include(CodeCoverage)
+	set(COVERAGE_LCOV_EXCLUDES '3rd_party/*')
+	APPEND_COVERAGE_COMPILER_FLAGS()
+   	SETUP_TARGET_FOR_COVERAGE_GCOVR_HTML(
+		NAME coverage
+        EXECUTABLE miniplc0_test
+    )
+endif()
+
 add_subdirectory(3rd_party/argparse)
 add_subdirectory(3rd_party/fmt)
 
