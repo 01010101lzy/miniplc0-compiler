@@ -226,3 +226,28 @@ TEST_CASE("Constants and variables act the same in programs") {
 
   REQUIRE(vm_result == std::vector{6});
 }
+
+TEST_CASE("Test add with random numbers") {
+  int32_t i = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
+  int32_t j = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
+  SECTION("Add numbers") {
+    std::string input = fmt::format(
+        "begin\n"
+        "  var i = {}; \n"
+        "  var j = {}; \n"
+        "  print(i+j); \n"
+        "end",
+        i, j);
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+    std::vector<int32_t> expected = {i + j};
+
+    REQUIRE(vm_result == expected);
+  }
+}
