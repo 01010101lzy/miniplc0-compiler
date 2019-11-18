@@ -19,26 +19,26 @@ inline void DieAndPrint(std::string condition) {
 
 // To keep it simple, we don't create an error system.
 enum ErrorCode {
-  ErrNoError,  // Should be only used internally.
-  ErrStreamError,
-  ErrEOF,
-  ErrInvalidInput,
-  ErrInvalidIdentifier,
-  ErrIntegerOverflow,  // int32_t overflow.
-  ErrNoBegin,
-  ErrNoEnd,
-  ErrNeedIdentifier,
-  ErrConstantNeedValue,
-  ErrNoSemicolon,
-  ErrInvalidVariableDeclaration,
-  ErrIncompleteExpression,
-  ErrNotDeclared,
-  ErrAssignToConstant,
-  ErrDuplicateDeclaration,
-  ErrNotInitialized,
-  ErrInvalidAssignment,
-  ErrInvalidPrint,
-  ErrExpectAssignment
+  ErrNoError,                     // Should be only used internally.
+  ErrStreamError,                 // * Not my code
+  ErrEOF,                         // * Not my code
+  ErrInvalidInput,                // TODO: Tests
+  ErrInvalidIdentifier,           // * we didn't use this error
+  ErrIntegerOverflow,             // int32_t overflow. Tests ok
+  ErrNoBegin,                     // tests ok
+  ErrNoEnd,                       // tests ok
+  ErrNeedIdentifier,              // tests ok
+  ErrConstantNeedValue,           // tests ok
+  ErrNoSemicolon,                 // tests ok
+  ErrInvalidVariableDeclaration,  // TODO: Tests
+  ErrIncompleteExpression,        // TODO: Tests
+  ErrNotDeclared,                 // tests ok
+  ErrAssignToConstant,            // tests ok
+  ErrDuplicateDeclaration,        // tests ok
+  ErrNotInitialized,              // tests ok
+  ErrInvalidAssignment,           // * we didn't use this error
+  ErrInvalidPrint,                // TODO: Tests
+  ErrExpectAssignment             // * we didn't use this error
 };
 
 class CompilationError final {

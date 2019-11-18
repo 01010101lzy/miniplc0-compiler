@@ -70,37 +70,6 @@ TEST_CASE("Test regular numbers") {
   }
 }
 
-TEST_CASE("Test number overflow") {
-  SECTION("Too large numbers obviously overflow") {
-    std::string ovf = "10000000000000000 ";
-    std::stringstream in(ovf);
-    miniplc0::Tokenizer lexer(in);
-    auto res = lexer.NextToken();
-    REQUIRE(res.second.has_value());
-    REQUIRE(res.second.value().GetCode() ==
-            miniplc0::ErrorCode::ErrIntegerOverflow);
-  }
-  SECTION("2147483647 not overflow") {
-    std::string ovf = "2147483647";
-    std::stringstream in(ovf);
-    miniplc0::Tokenizer lexer(in);
-    auto res = lexer.NextToken();
-    REQUIRE_FALSE(res.second.has_value());
-    REQUIRE(res.first.has_value());
-    // REQUIRE(res.second.value().GetCode() ==
-    // miniplc0::ErrorCode::ErrIntegerOverflow);
-  }
-  SECTION("2147483648 overflow") {
-    std::string ovf = "2147483648 ";
-    std::stringstream in(ovf);
-    miniplc0::Tokenizer lexer(in);
-    auto res = lexer.NextToken();
-    REQUIRE(res.second.has_value());
-    REQUIRE(res.second.value().GetCode() ==
-            miniplc0::ErrorCode::ErrIntegerOverflow);
-  }
-}
-
 TEST_CASE("Test Identifiers") {
   std::vector<std::pair<std::string, miniplc0::Token>> cases = {
       {"a", miniplc0::Token(miniplc0::TokenType::IDENTIFIER, std::string("a"),
@@ -198,5 +167,38 @@ TEST_CASE("Test Symbols") {
     REQUIRE(res.first.has_value());
     REQUIRE(res.first.value() == miniplc0::Token(miniplc0::TokenType::SEMICOLON,
                                                  ';', {0, 7}, {0, 8}));
+  }
+}
+
+/* ======== Errors ======== */
+
+TEST_CASE("Test number overflow") {
+  SECTION("Too large numbers obviously overflow") {
+    std::string ovf = "10000000000000000 ";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIntegerOverflow);
+  }
+  SECTION("2147483647 does not overflow") {
+    std::string ovf = "2147483647";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE_FALSE(res.second.has_value());
+    REQUIRE(res.first.has_value());
+    // REQUIRE(res.second.value().GetCode() ==
+    // miniplc0::ErrorCode::ErrIntegerOverflow);
+  }
+  SECTION("2147483648 overflows") {
+    std::string ovf = "2147483648";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIntegerOverflow);
   }
 }
