@@ -7,6 +7,7 @@
 
 #include "fmt/core.h"
 #include "fmts.hpp"
+#include "simple_vm.hpp"
 std::ostream& operator<<(std::ostream& os,
                          miniplc0::CompilationError const& t) {
   os << fmt::format("{}", t);
@@ -16,6 +17,21 @@ std::ostream& operator<<(std::ostream& os, miniplc0::Instruction const& t) {
   os << fmt::format("{}", t);
   return os;
 }
+
+// template <typename T>
+// struct formatter<std::vector<T>> {
+//   template <typename ParseContext>
+//   constexpr auto parse(ParseContext& ctx) {
+//     return ctx.begin();
+//   }
+
+//   template <typename FormatContext>
+//   auto format(const std::vector<T>& p, FormatContext& ctx) {
+//     auto res = format_to(ctx.out(), "[");
+//     for (auto& i : p) format_to(ctx.out(), "{}, ", i);
+//     return format_to(ctx.out(), "]");
+//   }
+// };
 #include "catch2/catch.hpp"
 
 std::pair<std::vector<miniplc0::Instruction>,
@@ -44,7 +60,7 @@ TEST_CASE("Constant storing") {
 
   std::vector<miniplc0::Instruction> expected = {
       miniplc0::Instruction(miniplc0::Operation::LIT, 1),
-      miniplc0::Instruction(miniplc0::Operation::STO, 0),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 0),
   };
 
   REQUIRE(result.first == expected);
@@ -81,7 +97,7 @@ TEST_CASE("Variable storing") {
 
   std::vector<miniplc0::Instruction> expected = {
       miniplc0::Instruction(miniplc0::Operation::LIT, 1),
-      miniplc0::Instruction(miniplc0::Operation::STO, 0),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 0),
   };
 
   REQUIRE(result.first == expected);
@@ -99,7 +115,7 @@ TEST_CASE("Variables allow assignments") {
 
   std::vector<miniplc0::Instruction> expected = {
       miniplc0::Instruction(miniplc0::Operation::LIT, 1),
-      miniplc0::Instruction(miniplc0::Operation::STO, 0),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 0),
       miniplc0::Instruction(miniplc0::Operation::LIT, 2),
       miniplc0::Instruction(miniplc0::Operation::STO, 0),
   };
@@ -119,16 +135,17 @@ TEST_CASE("Variables are stored according to declaration order") {
 
   std::vector<miniplc0::Instruction> expected = {
       miniplc0::Instruction(miniplc0::Operation::LIT, 0),
-      miniplc0::Instruction(miniplc0::Operation::STO, 0),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 0),
       miniplc0::Instruction(miniplc0::Operation::LIT, 1),
-      miniplc0::Instruction(miniplc0::Operation::STO, 1),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 1),
   };
 
   REQUIRE(result.first == expected);
 
   REQUIRE_FALSE(result.second.has_value());
 }
-TEST_CASE("Variables without initial values have no instruction") {
+
+TEST_CASE("Variables without initial values are initialized with 0") {
   std::string input =
       "begin\n"
       "  var test; \n"
@@ -138,8 +155,10 @@ TEST_CASE("Variables without initial values have no instruction") {
   auto result = analyze(input);
 
   std::vector<miniplc0::Instruction> expected = {
+      miniplc0::Instruction(miniplc0::Operation::LIT, 0),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 0),
       miniplc0::Instruction(miniplc0::Operation::LIT, 1),
-      miniplc0::Instruction(miniplc0::Operation::STO, 1),
+      // miniplc0::Instruction(miniplc0::Operation::STO, 1),
       miniplc0::Instruction(miniplc0::Operation::LIT, 2),
       miniplc0::Instruction(miniplc0::Operation::STO, 0),
   };
@@ -147,4 +166,63 @@ TEST_CASE("Variables without initial values have no instruction") {
   REQUIRE(result.first == expected);
 
   REQUIRE_FALSE(result.second.has_value());
+}
+
+TEST_CASE("Uninitialized variable cannot be used") {
+  std::string input =
+      "begin\n"
+      "  var test; \n"
+      "  var test1 = test; \n"
+      "end";
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+  REQUIRE(result.second.value().GetCode() ==
+          miniplc0::ErrorCode::ErrNotInitialized);
+}
+
+TEST_CASE("Const cannot be assigned") {
+  std::string input =
+      "begin\n"
+      "  const test = 1; \n"
+      "  test = 1; \n"
+      "end";
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+  REQUIRE(result.second.value().GetCode() ==
+          miniplc0::ErrorCode::ErrAssignToConstant);
+}
+
+TEST_CASE("Cannot assign to constant") {
+  std::string input =
+      "begin\n"
+      "  const test = 1; \n"
+      "  test = 1; \n"
+      "end";
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+  REQUIRE(result.second.value().GetCode() ==
+          miniplc0::ErrorCode::ErrAssignToConstant);
+}
+
+TEST_CASE("Constants and variables act the same in programs") {
+  std::string input =
+      "begin\n"
+      "  const a = 1; \n"
+      "  var b = 2; \n"
+      "  var c = 3;\n"
+      "  print(a+b+c); \n"
+      "end";
+  auto result = analyze(input);
+
+  REQUIRE_FALSE(result.second.has_value());
+
+  auto vm = miniplc0::VM(result.first);
+  CAPTURE(result.first);
+
+  auto vm_result = vm.Run();
+
+  REQUIRE(vm_result == std::vector{6});
 }

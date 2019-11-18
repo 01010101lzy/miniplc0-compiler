@@ -111,8 +111,8 @@ std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
                                                   ErrorCode::ErrNoSemicolon);
     // 生成一次 LIT 指令加载常量
     _instructions.emplace_back(Operation::LIT, val);
-    _instructions.emplace_back(Operation::STO,
-                               getIndex(next.value().GetValueString()));
+    // _instructions.emplace_back(Operation::STO,
+    //                            getIndex(next.value().GetValueString()));
   }
   return {};
 }
@@ -137,6 +137,10 @@ std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
 
     if (!tryExpectToken(TokenType::EQUAL_SIGN)) {
       addUninitializedVariable(next);
+      // variables are created in sequence
+      _instructions.emplace_back(Operation::LIT, 0);
+      // _instructions.emplace_back(Operation::STO,
+      //                            getIndex(next.GetValueString()));
     } else {
       // '<表达式>'
 
@@ -145,8 +149,8 @@ std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
       if (err.has_value()) return err;
 
       addVariable(next);
-      _instructions.emplace_back(Operation::STO,
-                                 getIndex(next.GetValueString()));
+      // _instructions.emplace_back(Operation::STO,
+      //  getIndex(next.GetValueString()));
     }
 
     // ';'
@@ -257,6 +261,8 @@ std::optional<CompilationError> Analyser::analyseAssignmentStatement() {
   if (err.has_value()) return err;
 
   if (!isInitializedVariable(ident)) makeInitialized(next.value());
+  if (!expectToken(TokenType::SEMICOLON))
+    return {CompilationError(_current_pos, ErrorCode::ErrNoSemicolon)};
 
   _instructions.emplace_back(Operation::STO, getIndex(ident));
   // 这里除了语法分析以外还要留意
