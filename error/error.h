@@ -22,7 +22,7 @@ enum ErrorCode {
   ErrNoError,                     // Should be only used internally.
   ErrStreamError,                 // * Not my code
   ErrEOF,                         // * Not my code
-  ErrInvalidInput,                // TODO: Tests
+  ErrInvalidInput,                // tests ok
   ErrInvalidIdentifier,           // * we didn't use this error
   ErrIntegerOverflow,             // int32_t overflow. Tests ok
   ErrNoBegin,                     // tests ok
@@ -31,13 +31,13 @@ enum ErrorCode {
   ErrConstantNeedValue,           // tests ok
   ErrNoSemicolon,                 // tests ok
   ErrInvalidVariableDeclaration,  // TODO: Tests
-  ErrIncompleteExpression,        // TODO: Tests
+  ErrIncompleteExpression,        // tests ok
   ErrNotDeclared,                 // tests ok
   ErrAssignToConstant,            // tests ok
   ErrDuplicateDeclaration,        // tests ok
   ErrNotInitialized,              // tests ok
   ErrInvalidAssignment,           // * we didn't use this error
-  ErrInvalidPrint,                // TODO: Tests
+  ErrInvalidPrint,                // tests ok
   ErrExpectAssignment             // * we didn't use this error
 };
 

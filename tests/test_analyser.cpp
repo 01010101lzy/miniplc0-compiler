@@ -189,6 +189,127 @@ TEST_CASE("Constants and variables act the same in programs") {
   REQUIRE(vm_result == std::vector{6});
 }
 
+TEST_CASE("Constant expressions") {
+  std::string input =
+      "begin\n"
+      "  const a = 1; \n"
+      "  const b = +1; \n"
+      "  const c = -1; \n"
+      "  print(a); \n"
+      "  print(b); \n"
+      "  print(c); \n"
+      "end";
+  auto result = analyze(input);
+
+  REQUIRE_FALSE(result.second.has_value());
+
+  auto vm = miniplc0::VM(result.first);
+  CAPTURE(result.first);
+
+  auto vm_result = vm.Run();
+
+  REQUIRE(vm_result == std::vector{1, 1, -1});
+}
+
+// ========== Calculations =============
+
+TEST_CASE("Adding random numbers") {
+  int32_t i = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
+  int32_t j = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
+  SECTION("Add numbers") {
+    std::string input = fmt::format(
+        "begin\n"
+        "  var i = {}; \n"
+        "  var j = {}; \n"
+        "  print(i+j); \n"
+        "end",
+        i, j);
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+    std::vector<int32_t> expected = {i + j};
+
+    REQUIRE(vm_result == expected);
+  }
+}
+TEST_CASE("Subtracting random numbers") {
+  int32_t i = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
+  int32_t j = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
+  SECTION("Add numbers") {
+    std::string input = fmt::format(
+        "begin\n"
+        "  var i = {}; \n"
+        "  var j = {}; \n"
+        "  print(i-j); \n"
+        "end",
+        i, j);
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+    std::vector<int32_t> expected = {i - j};
+
+    REQUIRE(vm_result == expected);
+  }
+}
+TEST_CASE("Multiplying random numbers") {
+  int32_t i = GENERATE(take(30, random(-INT16_MAX, INT16_MAX)));
+  int32_t j = GENERATE(take(30, random(-INT16_MAX, INT16_MAX)));
+  SECTION("Add numbers") {
+    std::string input = fmt::format(
+        "begin\n"
+        "  var i = {}; \n"
+        "  var j = {}; \n"
+        "  print(i*j); \n"
+        "end",
+        i, j);
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+    std::vector<int32_t> expected = {i * j};
+
+    REQUIRE(vm_result == expected);
+  }
+}
+TEST_CASE("Dividing random numbers") {
+  int32_t i = GENERATE(take(30, random(-INT32_MAX, INT32_MAX)));
+  int32_t j = GENERATE(take(30, random(-INT32_MAX, INT32_MAX)));
+  SECTION("Add numbers") {
+    std::string input = fmt::format(
+        "begin\n"
+        "  var i = {}; \n"
+        "  var j = {}; \n"
+        "  print(i/j); \n"
+        "end",
+        i, j);
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+    std::vector<int32_t> expected = {i / j};
+
+    REQUIRE(vm_result == expected);
+  }
+}
+
 /* ======== Errors ======== */
 
 TEST_CASE("ENoBegin: Main should has 'begin'") {
@@ -236,19 +357,40 @@ TEST_CASE("ENeedIdentifier: Assignments need identifiers") {
           miniplc0::ErrorCode::ErrNeedIdentifier);
 }
 
-TEST_CASE(
-    "ENeedIdentifier: Assignments need identifiers, not other token types") {
-  // this test is essensially the same as the last one. Anything other than
-  // <token> is reported in this case.
-  std::string input =
-      "begin \n"
-      "  var 1 = 4; \n"
-      "end";
-  auto result = analyze(input);
+TEST_CASE("ENeedIdentifier: Variable declaration need identifiers") {
+  SECTION("Constant declaration") {
+    std::string input =
+        "begin \n"
+        "  const = 4; \n"
+        "end";
+    auto result = analyze(input);
 
-  REQUIRE(result.second.has_value());
-  REQUIRE(result.second.value().GetCode() ==
-          miniplc0::ErrorCode::ErrNeedIdentifier);
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNeedIdentifier);
+  }
+  SECTION("Variable declaration") {
+    std::string input =
+        "begin \n"
+        "  var = 4; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNeedIdentifier);
+  }
+  SECTION("Variable declaration (2)") {
+    std::string input =
+        "begin \n"
+        "  var ; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNeedIdentifier);
+  }
 }
 
 TEST_CASE("ENotDeclared: Variable cannot be used without declaration") {
@@ -394,6 +536,39 @@ TEST_CASE("ENeedSemicolon: Semicolons are needed at every statement") {
 }
 
 TEST_CASE("EIncompleteExpression: When parameters don't match") {
+  SECTION("In assignment") {
+    std::string input =
+        "begin\n"
+        "  var test = ; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("In constant number literals") {
+    std::string input =
+        "begin\n"
+        "  const j = + ; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("In constant number literals") {
+    std::string input =
+        "begin\n"
+        "  const j = ; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
   SECTION("After a addition operator") {
     std::string input =
         "begin\n"
@@ -427,29 +602,38 @@ TEST_CASE("EIncompleteExpression: When parameters don't match") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrIncompleteExpression);
   }
-}
-
-TEST_CASE("Test add with random numbers") {
-  int32_t i = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
-  int32_t j = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
-  SECTION("Add numbers") {
-    std::string input = fmt::format(
+  SECTION("Early EOF") {
+    std::string input =
         "begin\n"
-        "  var i = {}; \n"
-        "  var j = {}; \n"
-        "  print(i+j); \n"
-        "end",
-        i, j);
+        "  var test = (1 +";
     auto result = analyze(input);
 
-    REQUIRE_FALSE(result.second.has_value());
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+}
+TEST_CASE("EInvalidPrint: When parameters don't match") {
+  SECTION("Left parenthesis") {
+    std::string input =
+        "begin\n"
+        "  print 1 ); \n"
+        "end";
+    auto result = analyze(input);
 
-    auto vm = miniplc0::VM(result.first);
-    CAPTURE(result.first);
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidPrint);
+  }
+  SECTION("Right parenthesis") {
+    std::string input =
+        "begin\n"
+        "  print( 1 ; \n"
+        "end";
+    auto result = analyze(input);
 
-    auto vm_result = vm.Run();
-    std::vector<int32_t> expected = {i + j};
-
-    REQUIRE(vm_result == expected);
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidPrint);
   }
 }
