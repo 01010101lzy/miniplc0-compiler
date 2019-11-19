@@ -202,3 +202,96 @@ TEST_CASE("Test number overflow") {
             miniplc0::ErrorCode::ErrIntegerOverflow);
   }
 }
+
+TEST_CASE("Test invalid characters") {
+  SECTION("Single quotes") {
+    std::string ovf = "'";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Double quotes") {
+    std::string ovf = "\"";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Dollar") {
+    std::string ovf = "$";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("At") {
+    std::string ovf = "@";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Hashtag") {
+    std::string ovf = "#";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Tilde") {
+    std::string ovf = "~";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Angled bracket") {
+    std::string ovf = "<";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Square bracket") {
+    std::string ovf = "<";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+  SECTION("Backslash") {
+    std::string ovf = "\\";
+    std::stringstream in(ovf);
+    miniplc0::Tokenizer lexer(in);
+    auto res = lexer.NextToken();
+    REQUIRE(res.second.has_value());
+    REQUIRE(res.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrInvalidInput);
+  }
+}
+
+TEST_CASE("EOF should be reported") {
+  std::string ovf = "";
+  std::stringstream in(ovf);
+  miniplc0::Tokenizer lexer(in);
+  auto res = lexer.NextToken();
+  REQUIRE(res.second.has_value());
+  REQUIRE(res.second.value().GetCode() == miniplc0::ErrorCode::ErrEOF);
+}
