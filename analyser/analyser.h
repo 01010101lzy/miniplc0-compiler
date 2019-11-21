@@ -69,12 +69,12 @@ class Analyser final {
 
   // 返回下一个 token
   std::optional<Token> nextToken();
-  // 期望下一个 token 是指定的种类，不回退
-  inline bool expectToken(const TokenType&);
-  // 期望下一个 token 是指定的种类，如果不是的话回退
-  inline bool tryExpectToken(const TokenType&);
-  // 期望下一个 token 是指定的种类，总是回退
-  inline bool peekExpectToken(const TokenType&);
+  // // 期望下一个 token 是指定的种类，不回退
+  // inline bool expectToken(const TokenType&);
+  // // 期望下一个 token 是指定的种类，如果不是的话回退
+  // inline bool tryExpectToken(const TokenType&);
+  // // 期望下一个 token 是指定的种类，总是回退
+  // inline bool peekExpectToken(const TokenType&);
   // 回退一个 token
   void unreadToken();
 

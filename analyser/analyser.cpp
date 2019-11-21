@@ -12,24 +12,41 @@ Analyser::Analyse() {
     return std::make_pair(_instructions, std::optional<CompilationError>());
 }
 
-inline bool Analyser::expectToken(const TokenType& t) {
-  auto x = nextToken();
-  return (x.has_value() && x.value().GetType() == t);
+#define expectToken(tt) (expect(nextToken(), tt))
+
+#define peekExpectToken(tt) \
+  (seq(expect(nextToken(), tt), &Analyser::unreadToken, this))
+
+#define tryExpectToken(tt) \
+  (expect(nextToken(), tt) ? true : seq(false, &Analyser::unreadToken, this))
+
+bool expect(const std::optional<Token>& t, const TokenType& tt) {
+  return (t.has_value() && t.value().GetType() == tt);
 }
-inline bool Analyser::peekExpectToken(const TokenType& t) {
-  auto x = nextToken();
-  unreadToken();
-  return (x.has_value() && x.value().GetType() == t);
+
+bool seq(bool a, void (Analyser::*b)(void), Analyser* c) {
+  (c->*b)();
+  return a;
 }
-inline bool Analyser::tryExpectToken(const TokenType& t) {
-  auto x = nextToken();
-  if (x.has_value() && x.value().GetType() == t) {
-    return true;
-  } else {
-    unreadToken();
-    return false;
-  }
-}
+
+// inline bool Analyser::expectToken(const TokenType& t) {
+//   auto x = nextToken();
+//   return (x.has_value() && x.value().GetType() == t);
+// }
+// inline bool Analyser::peekExpectToken(const TokenType& t) {
+//   auto x = nextToken();
+//   unreadToken();
+//   return (x.has_value() && x.value().GetType() == t);
+// }
+// inline bool Analyser::tryExpectToken(const TokenType& t) {
+//   auto x = nextToken();
+//   if (x.has_value() && x.value().GetType() == t) {
+//     return true;
+//   } else {
+//     unreadToken();
+//     return false;
+//   }
+// }
 
 // <程序> ::= 'begin'<主过程>'end'
 std::optional<CompilationError> Analyser::analyseProgram() {
