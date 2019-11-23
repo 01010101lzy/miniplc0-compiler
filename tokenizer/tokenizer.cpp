@@ -117,6 +117,18 @@ Tokenizer::nextToken() {
       current_char = nextChar();
     }
 
+    //* This is for dealing with numbers directly having letters trailling them.
+    //* Might need to move it into another function
+    if (miniplc0::isalpha(current_char.value())) {
+      // It **should** be an invalid identifier and be sent to CheckToken().
+      // However we can skip that and send a invalid identifier error from here.
+      //
+      // LAZY mio =x=                             - Rynco
+      return {std::optional<Token>(),
+              std::make_optional<CompilationError>(
+                  pos, ErrorCode::ErrInvalidIdentifier)};
+    }
+
     unreadLast();
 
     auto s = ss.str();

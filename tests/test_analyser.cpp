@@ -211,7 +211,7 @@ TEST_CASE("Constant expressions") {
   REQUIRE(vm_result == std::vector{1, 1, -1});
 }
 
-// ========== Calculations =============
+// ========== Correctness Tests =============
 
 TEST_CASE("Adding random numbers") {
   int32_t i = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
@@ -237,6 +237,7 @@ TEST_CASE("Adding random numbers") {
     REQUIRE(vm_result == expected);
   }
 }
+
 TEST_CASE("Subtracting random numbers") {
   int32_t i = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
   int32_t j = GENERATE(take(30, random(-2147483647 / 2, 2147482647 / 2)));
@@ -261,6 +262,7 @@ TEST_CASE("Subtracting random numbers") {
     REQUIRE(vm_result == expected);
   }
 }
+
 TEST_CASE("Multiplying random numbers") {
   int32_t i = GENERATE(take(30, random(-INT16_MAX, INT16_MAX)));
   int32_t j = GENERATE(take(30, random(-INT16_MAX, INT16_MAX)));
@@ -285,6 +287,7 @@ TEST_CASE("Multiplying random numbers") {
     REQUIRE(vm_result == expected);
   }
 }
+
 TEST_CASE("Dividing random numbers") {
   int32_t i = GENERATE(take(30, random(-INT32_MAX, INT32_MAX)));
   int32_t j = GENERATE(take(30, random(-INT32_MAX, INT32_MAX)));
@@ -310,6 +313,52 @@ TEST_CASE("Dividing random numbers") {
   }
 }
 
+TEST_CASE("Various expressions") {
+  SECTION("Deep expression") {
+    std::string input =
+        "begin\n"
+        "  const a = 1; \n"
+        "  var b = 4; \n"
+        "  var c = 215; \n"
+        "  b = b * (a + (a * c / b));\n"
+        "  print(b); \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+
+    REQUIRE(vm_result == std::vector{216});
+  }
+  SECTION("Multiple expressions") {
+    std::string input =
+        "begin\n"
+        "  const a = 8; \n"
+        "  var b = 16; \n"
+        "  var c = 24; \n"
+        "  print(a); \n"
+        "  b = b * (a + a * b / c);\n"
+        "  c = a - c / (a + b);\n"
+        "  print(b); \n"
+        "  print(c); \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE_FALSE(result.second.has_value());
+
+    auto vm = miniplc0::VM(result.first);
+    CAPTURE(result.first);
+
+    auto vm_result = vm.Run();
+
+    REQUIRE(vm_result == std::vector{8, 208, 8});
+  }
+}
+
 /* ======== Errors ======== */
 
 TEST_CASE("ENoBegin: Main should has 'begin'") {
@@ -322,10 +371,22 @@ TEST_CASE("ENoBegin: Main should has 'begin'") {
   REQUIRE(result.second.value().GetCode() == miniplc0::ErrorCode::ErrNoBegin);
 }
 
-TEST_CASE("ENoBegin: Main should has 'end'") {
+TEST_CASE("ENoEnd: Main should has 'end'") {
   std::string input =
       "begin \n"
       "  var test; \n"
+      "";
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+  REQUIRE(result.second.value().GetCode() == miniplc0::ErrorCode::ErrNoEnd);
+}
+
+TEST_CASE("ENoEnd: consts should appear before vars") {
+  std::string input =
+      "begin \n"
+      "  var test; \n"
+      "  const test; \n"
       "";
   auto result = analyze(input);
 
@@ -345,16 +406,28 @@ TEST_CASE("EConstantNeedValue: Constants must be initialized") {
           miniplc0::ErrorCode::ErrConstantNeedValue);
 }
 
-TEST_CASE("ENeedIdentifier: Assignments need identifiers") {
+TEST_CASE("EConstantNeedValue: Constants must be assigned with numbers") {
   std::string input =
       "begin \n"
-      "  var = 4; \n"
+      "  const test = 1 * 2; \n"
       "end";
+  auto result = analyze(input);
+
+  // * This really is reported as "Need Semicolon". Not wrong.
+  REQUIRE(result.second.has_value());
+  REQUIRE(result.second.value().GetCode() ==
+          miniplc0::ErrorCode::ErrNoSemicolon);
+}
+
+TEST_CASE("EConstantNeedValue: Constants must be initialized (EOF)") {
+  std::string input =
+      "begin \n"
+      "  const test";
   auto result = analyze(input);
 
   REQUIRE(result.second.has_value());
   REQUIRE(result.second.value().GetCode() ==
-          miniplc0::ErrorCode::ErrNeedIdentifier);
+          miniplc0::ErrorCode::ErrConstantNeedValue);
 }
 
 TEST_CASE("ENeedIdentifier: Variable declaration need identifiers") {
@@ -380,11 +453,31 @@ TEST_CASE("ENeedIdentifier: Variable declaration need identifiers") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrNeedIdentifier);
   }
-  SECTION("Variable declaration (2)") {
+  SECTION("Variable declaration (EOL)") {
     std::string input =
         "begin \n"
         "  var ; \n"
         "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNeedIdentifier);
+  }
+  SECTION("Constant declaration (EOF)") {
+    std::string input =
+        "begin \n"
+        "  const";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNeedIdentifier);
+  }
+  SECTION("Variable declaration (EOF)") {
+    std::string input =
+        "begin \n"
+        "  var";
     auto result = analyze(input);
 
     REQUIRE(result.second.has_value());
@@ -533,6 +626,50 @@ TEST_CASE("ENeedSemicolon: Semicolons are needed at every statement") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrNoSemicolon);
   }
+  SECTION("Semicolon in const declaration (EOF)") {
+    std::string input =
+        "begin\n"
+        "  const test = 1";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNoSemicolon);
+  }
+
+  SECTION("Semicolon in var declaration (EOF)") {
+    std::string input =
+        "begin\n"
+        "  var test = 1";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNoSemicolon);
+  }
+
+  SECTION("Semicolon in expression (EOF)") {
+    std::string input =
+        "begin\n"
+        "  var test; \n"
+        "  test = 1";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNoSemicolon);
+  }
+
+  SECTION("Semicolon in print statement (EOF)") {
+    std::string input =
+        "begin\n"
+        "  print(1)";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrNoSemicolon);
+  }
 }
 
 TEST_CASE("EIncompleteExpression: When parameters don't match") {
@@ -547,7 +684,18 @@ TEST_CASE("EIncompleteExpression: When parameters don't match") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrIncompleteExpression);
   }
-  SECTION("In constant number literals") {
+  SECTION("In assignment (EOF)") {
+    std::string input =
+        "begin\n"
+        "  var test = ; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("In constant number literals - no number") {
     std::string input =
         "begin\n"
         "  const j = + ; \n"
@@ -558,7 +706,18 @@ TEST_CASE("EIncompleteExpression: When parameters don't match") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrIncompleteExpression);
   }
-  SECTION("In constant number literals") {
+  SECTION("In constant number literals - no number (EOF)") {
+    std::string input =
+        "begin\n"
+        "  const j = + ; \n"
+        "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("In constant number literals - no sign or number") {
     std::string input =
         "begin\n"
         "  const j = ; \n"
@@ -569,7 +728,17 @@ TEST_CASE("EIncompleteExpression: When parameters don't match") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrIncompleteExpression);
   }
-  SECTION("After a addition operator") {
+  SECTION("In constant number literals - no sign or number (EOF)") {
+    std::string input =
+        "begin\n"
+        "  const j =";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("After a additive operator") {
     std::string input =
         "begin\n"
         "  var test = 1 + ; \n"
@@ -580,11 +749,31 @@ TEST_CASE("EIncompleteExpression: When parameters don't match") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrIncompleteExpression);
   }
-  SECTION("After a mutiplication operator") {
+  SECTION("After a multiplicative operator") {
     std::string input =
         "begin\n"
         "  var test = 1 * ; \n"
         "end";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("After a additive operator (EOF)") {
+    std::string input =
+        "begin\n"
+        "  var test = 1 +";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("After a multiplicative operator (EOF)") {
+    std::string input =
+        "begin\n"
+        "  var test = 1 *";
     auto result = analyze(input);
 
     REQUIRE(result.second.has_value());
@@ -602,7 +791,17 @@ TEST_CASE("EIncompleteExpression: When parameters don't match") {
     REQUIRE(result.second.value().GetCode() ==
             miniplc0::ErrorCode::ErrIncompleteExpression);
   }
-  SECTION("Early EOF") {
+  SECTION("With parentheses (EOF)") {
+    std::string input =
+        "begin\n"
+        "  var test = (1 + 1";
+    auto result = analyze(input);
+
+    REQUIRE(result.second.has_value());
+    REQUIRE(result.second.value().GetCode() ==
+            miniplc0::ErrorCode::ErrIncompleteExpression);
+  }
+  SECTION("One more test (EOF)") {
     std::string input =
         "begin\n"
         "  var test = (1 +";

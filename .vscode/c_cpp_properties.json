@@ -4,8 +4,111 @@
             "name": "Linux",
             "defines": [],
             "compilerPath": "/usr/sbin/clang",
-            "configurationProvider": "vector-of-bool.cmake-tools",
-            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+            "knownCompilers": [
+                {
+                    "path": "/usr/sbin/clang",
+                    "isC": true
+                },
+                {
+                    "path": "/usr/sbin/clang++",
+                    "isC": false
+                },
+                {
+                    "path": "/usr/sbin/gcc",
+                    "isC": true
+                },
+                {
+                    "path": "/usr/sbin/g++",
+                    "isC": false
+                },
+                {
+                    "path": "/usr/sbin/cpp",
+                    "isC": false
+                },
+                {
+                    "path": "/usr/bin/clang",
+                    "isC": true
+                },
+                {
+                    "path": "/usr/bin/clang++",
+                    "isC": false
+                },
+                {
+                    "path": "/usr/bin/gcc",
+                    "isC": true
+                },
+                {
+                    "path": "/usr/bin/g++",
+                    "isC": false
+                },
+                {
+                    "path": "/usr/bin/cpp",
+                    "isC": false
+                },
+                {
+                    "path": "/sbin/clang",
+                    "isC": true
+                },
+                {
+                    "path": "/sbin/clang++",
+                    "isC": false
+                },
+                {
+                    "path": "/sbin/gcc",
+                    "isC": true
+                },
+                {
+                    "path": "/sbin/g++",
+                    "isC": false
+                },
+                {
+                    "path": "/sbin/cpp",
+                    "isC": false
+                },
+                {
+                    "path": "/bin/clang",
+                    "isC": true
+                },
+                {
+                    "path": "/bin/clang++",
+                    "isC": false
+                },
+                {
+                    "path": "/bin/gcc",
+                    "isC": true
+                },
+                {
+                    "path": "/bin/g++",
+                    "isC": false
+                },
+                {
+                    "path": "/bin/cpp",
+                    "isC": false
+                },
+                {
+                    "path": "/usr/sbin/clang",
+                    "isC": false
+                }
+            ],
+            "includePath": [
+                "C:\\tools\\ruby25\\msys64\\mingw64\\x86_64-w64-mingw32\\include",
+                "C:\\Program Files\\LLVM\\lib\\clang\\8.0.1\\include",
+                "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.16.27023\\include"
+            ],
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "compilerArgs": [],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64",
+            "browse": {
+                "path": [
+                    "C:\\tools\\ruby25\\msys64\\mingw64\\x86_64-w64-mingw32\\include",
+                    "C:\\Program Files\\LLVM\\lib\\clang\\8.0.1\\include",
+                    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\14.16.27023\\include",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
         }
     ],
     "version": 4

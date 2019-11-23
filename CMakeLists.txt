@@ -76,6 +76,7 @@ set(test_src
 	tests/test_tokenizer.cpp
 	tests/simple_vm.hpp
 	tests/test_analyser.cpp
+	# tests/test_analyser_comprehensive.cpp
 )
 
 add_executable(miniplc0_test ${test_src})

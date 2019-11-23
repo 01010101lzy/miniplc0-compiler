@@ -1,7 +1,7 @@
 .vs
 CMakeSettings.json
 *.plc0
-*.txt
+CMake*.txt
 build
 CMakeFiles
 *.cmake

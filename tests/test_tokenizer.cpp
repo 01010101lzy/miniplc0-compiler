@@ -76,8 +76,6 @@ TEST_CASE("Test Identifiers") {
                             {0, 0}, {0, 1})},
       {"abc123", miniplc0::Token(miniplc0::TokenType::IDENTIFIER,
                                  std::string("abc123"), {0, 0}, {0, 6})},
-      {"123abc", miniplc0::Token(miniplc0::TokenType::UNSIGNED_INTEGER,
-                                 std::string("123"), {0, 0}, {0, 3})},
       {"ull", miniplc0::Token(miniplc0::TokenType::IDENTIFIER,
                               std::string("ull"), {0, 0}, {0, 3})},
   };
@@ -174,8 +172,8 @@ TEST_CASE("Test Symbols") {
 
 TEST_CASE("Test number overflow") {
   SECTION("Too large numbers obviously overflow") {
-    std::string ovf = "10000000000000000 ";
-    std::stringstream in(ovf);
+    std::string ins = "10000000000000000 ";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -183,8 +181,8 @@ TEST_CASE("Test number overflow") {
             miniplc0::ErrorCode::ErrIntegerOverflow);
   }
   SECTION("2147483647 does not overflow") {
-    std::string ovf = "2147483647";
-    std::stringstream in(ovf);
+    std::string ins = "2147483647";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE_FALSE(res.second.has_value());
@@ -193,8 +191,8 @@ TEST_CASE("Test number overflow") {
     // miniplc0::ErrorCode::ErrIntegerOverflow);
   }
   SECTION("2147483648 overflows") {
-    std::string ovf = "2147483648";
-    std::stringstream in(ovf);
+    std::string ins = "2147483648";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -205,8 +203,8 @@ TEST_CASE("Test number overflow") {
 
 TEST_CASE("Test invalid characters") {
   SECTION("Single quotes") {
-    std::string ovf = "'";
-    std::stringstream in(ovf);
+    std::string ins = "'";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -214,8 +212,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Double quotes") {
-    std::string ovf = "\"";
-    std::stringstream in(ovf);
+    std::string ins = "\"";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -223,8 +221,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Dollar") {
-    std::string ovf = "$";
-    std::stringstream in(ovf);
+    std::string ins = "$";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -232,8 +230,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("At") {
-    std::string ovf = "@";
-    std::stringstream in(ovf);
+    std::string ins = "@";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -241,8 +239,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Hashtag") {
-    std::string ovf = "#";
-    std::stringstream in(ovf);
+    std::string ins = "#";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -250,8 +248,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Tilde") {
-    std::string ovf = "~";
-    std::stringstream in(ovf);
+    std::string ins = "~";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -259,8 +257,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Angled bracket") {
-    std::string ovf = "<";
-    std::stringstream in(ovf);
+    std::string ins = "<";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -268,8 +266,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Square bracket") {
-    std::string ovf = "<";
-    std::stringstream in(ovf);
+    std::string ins = "<";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -277,8 +275,8 @@ TEST_CASE("Test invalid characters") {
             miniplc0::ErrorCode::ErrInvalidInput);
   }
   SECTION("Backslash") {
-    std::string ovf = "\\";
-    std::stringstream in(ovf);
+    std::string ins = "\\";
+    std::stringstream in(ins);
     miniplc0::Tokenizer lexer(in);
     auto res = lexer.NextToken();
     REQUIRE(res.second.has_value());
@@ -288,10 +286,20 @@ TEST_CASE("Test invalid characters") {
 }
 
 TEST_CASE("EOF should be reported") {
-  std::string ovf = "";
-  std::stringstream in(ovf);
+  std::string ins = "";
+  std::stringstream in(ins);
   miniplc0::Tokenizer lexer(in);
   auto res = lexer.NextToken();
   REQUIRE(res.second.has_value());
   REQUIRE(res.second.value().GetCode() == miniplc0::ErrorCode::ErrEOF);
+}
+
+TEST_CASE("EInvalidIdentifier: digit proceeded with letter") {
+  std::string ins = "123abc";
+  std::stringstream in(ins);
+  miniplc0::Tokenizer lexer(in);
+  auto res = lexer.NextToken();
+  REQUIRE(res.second.has_value());
+  REQUIRE(res.second.value().GetCode() ==
+          miniplc0::ErrorCode::ErrInvalidIdentifier);
 }
