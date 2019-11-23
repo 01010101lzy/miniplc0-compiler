@@ -1,0 +1,4 @@
+begin
+var a;
+print(a);
+end

@@ -836,3 +836,143 @@ TEST_CASE("EInvalidPrint: When parameters don't match") {
             miniplc0::ErrorCode::ErrInvalidPrint);
   }
 }
+
+// ========= Official tests ==========
+
+TEST_CASE("Official tests - Assign") {
+  std::string input =
+      "begin\n"
+      "var a = 1;\n"
+      "var b;\n"
+      "var c;\n"
+      "var d;\n"
+      "var e;\n"
+      "b = a;\n"
+      "e = b;\n"
+      "d = e;\n"
+      "c = a;\n"
+      "print(c);\n"
+      "end \n";
+
+  auto result = analyze(input);
+
+  REQUIRE_FALSE(result.second.has_value());
+
+  auto vm = miniplc0::VM(result.first);
+  CAPTURE(result.first);
+
+  auto vm_result = vm.Run();
+  std::vector<int32_t> expected = {1};
+
+  REQUIRE(vm_result == expected);
+}
+
+TEST_CASE("Official tests - Declaration") {
+  std::string input =
+      "begin\n"
+      "const abc = 123;\n"
+      "var ABC = 456;\n"
+      "print(abc);\n"
+      "print(ABC);\n"
+      "end";
+
+  auto result = analyze(input);
+
+  REQUIRE_FALSE(result.second.has_value());
+
+  auto vm = miniplc0::VM(result.first);
+  CAPTURE(result.first);
+
+  auto vm_result = vm.Run();
+  std::vector<int32_t> expected = {123, 456};
+
+  REQUIRE(vm_result == expected);
+}
+
+TEST_CASE("Official tests - Init") {
+  std::string input =
+      "begin\n"
+      "var a = 0;\n"
+      "var b = 1;\n"
+      "var c = a + b;\n"
+      "a = b;\n"
+      "c = c;\n"
+      "c = a + b;\n"
+      "a = b;\n"
+      "b = c;\n"
+      "print(a);\n"
+      "print(b);\n"
+      "print(c);\n"
+      "end";
+
+  auto result = analyze(input);
+
+  REQUIRE_FALSE(result.second.has_value());
+
+  auto vm = miniplc0::VM(result.first);
+  CAPTURE(result.first);
+
+  auto vm_result = vm.Run();
+  std::vector<int32_t> expected = {1, 2, 2};
+
+  REQUIRE(vm_result == expected);
+}
+
+TEST_CASE("Official tests - Misssing Begin/End") {
+  std::string input =
+      "var a = 1;\n"
+      "print(a);\n";
+
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+}
+
+TEST_CASE("Official tests - Misssing Semicolon") {
+  std::string input =
+      "begin\n"
+      "const A = 1;\n"
+      "var B = A;\n"
+      "print(A)\n"
+      "end ";
+
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+}
+
+TEST_CASE("Official tests - Redeclaration") {
+  std::string input =
+      "begin\n"
+      "const A = 1;\n"
+      "var A;\n"
+      "end";
+
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+}
+
+TEST_CASE("Official tests - Uninit") {
+  std::string input =
+      "begin\n"
+      "var a;\n"
+      "print(a);\n"
+      "end";
+
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+}
+
+TEST_CASE("Official tests - Var/Const") {
+  std::string input =
+      "begin\n"
+      "var a;\n"
+      "const b = 1;\n"
+      "end";
+
+  auto result = analyze(input);
+
+  REQUIRE(result.second.has_value());
+}

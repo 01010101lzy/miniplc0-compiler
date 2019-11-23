@@ -5,13 +5,19 @@ project(miniplc0)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 if(CMAKE_COMPILER_IS_GNUCXX)
-	include(CodeCoverage)
-	set(COVERAGE_GCOVR_EXCLUDES '../3rd_party/')
-	APPEND_COVERAGE_COMPILER_FLAGS()
-   	SETUP_TARGET_FOR_COVERAGE_GCOVR_HTML(
+	find_program( GCOVR_PATH gcovr )
+
+	if( GCOVR_PATH )
+		include(CodeCoverage)
+		set(COVERAGE_GCOVR_EXCLUDES '../3rd_party/')
+		APPEND_COVERAGE_COMPILER_FLAGS()
+		SETUP_TARGET_FOR_COVERAGE_GCOVR_HTML(
 		NAME coverage
-        EXECUTABLE miniplc0_test
-    )
+		EXECUTABLE miniplc0_test
+		)
+	else()
+		message(INFO "GCov not found. Coverage tests will not be available")
+	endif() # NO
 endif()
 
 add_subdirectory(3rd_party/argparse)

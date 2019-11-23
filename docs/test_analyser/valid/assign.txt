@@ -1,0 +1,12 @@
+begin
+var a = 1;
+var b;
+var c;
+var d;
+var e;
+b = a;
+e = b;
+d = e;
+c = a;
+print(c);
+end

@@ -1,0 +1,4 @@
+begin
+const A = 1;
+var A;
+end
