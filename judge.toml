@@ -1,0 +1,5 @@
+[jobs.miniplc0]
+build = {source = "dockerfile", path = "."}
+run = [
+  "./miniplc0 -a $input > $output",
+]
