@@ -13,7 +13,7 @@ std::vector<miniplc0::Token> _tokenize(std::istream& input) {
   auto p = tkz.AllTokens();
   if (p.second.has_value()) {
     fmt::print(stderr, "Tokenization error: {}\n", p.second.value());
-    exit(2);
+    exit(0);
   }
   return p.first;
 }
@@ -30,7 +30,7 @@ void Analyse(std::istream& input, std::ostream& output) {
   auto p = analyser.Analyse();
   if (p.second.has_value()) {
     fmt::print(stderr, "Syntactic analysis error: {}\n", p.second.value());
-    exit(2);
+    exit(0);
   }
   auto v = p.first;
   for (auto& it : v) output << fmt::format("{}\n", it);
