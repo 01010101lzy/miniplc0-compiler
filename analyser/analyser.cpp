@@ -304,7 +304,7 @@ std::optional<CompilationError> Analyser::analyseFactor() {
                   &Analyser::unreadToken, this))) {
     auto next = nextToken().value();
 
-    int32_t val = std::any_cast<int32_t>(next.GetValue());
+    int32_t val = std::any_cast<int32_t>(next.GetValue()) + 1;
     _instructions.emplace_back(Operation::LIT, val);
 
   } else if ((expect(nextToken(), TokenType::LEFT_BRACKET)
